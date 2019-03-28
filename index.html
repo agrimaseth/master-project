@@ -1,0 +1,48 @@
+<html>
+<head>
+    <h1>Simple Search on PubMed</h1>
+    <h2>by yiwen Jan 2019</h2>
+    <link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js">
+</script>
+
+<script src="index-script.js">
+</script>
+
+<body>
+<div class="grid-container">
+    <div id="BC"><br>
+        <form name="B">Type your query
+            <input type="text" id="usrInput" >
+            <input type="button" id ="searchBtn" value="search">
+        </form>
+        <div id="C">
+        </div>
+        <div id="C1">
+        </div>
+        <div id="SuggestedQ"><br>
+            Suggested Query
+            <textarea id="suggest"></textarea>
+            <button type="button" id="copy">Copy</button>
+        </div>
+    </div>
+    <div id="ResultPanel">
+        <button type="button" id="starttask" disabled = "true">Start innerloop</button>
+        <button type="button" id="submit" disabled = "true">Submit Labels</button>
+        <button type="button" id="train" disabled = "true">Start Training</button>
+        <button type="button" id="stoplabel" disabled = "true">Stop innerloop and start outerloop</button>
+        <button type="button" id="stoptask" disabled = "true">Stop Task</button>
+        <div id = "A"></div>
+    </div>
+    <div id="D"><br></div>
+</div>
+
+</body>
+
+
+</html>
+
+
+

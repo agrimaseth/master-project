@@ -49,7 +49,7 @@ body {
 
 #sc { grid-area: sc; }
 #BC  { grid-area: bc; }
-#A   { grid-area: a; }
+#ResultPanel   { grid-area: a; }
 #D { grid-area: d; }
 
 
@@ -78,7 +78,7 @@ body {
     padding-left:10px;
 }
 
-#A  {
+#ResultPanel  {
     background-color: #ccffff;
     position: relative;
     color: #222222;
@@ -95,4 +95,8 @@ body {
     padding-left:10px;
 }
 
+#suggest {
+    height:80px;
+    width: 200px;
+}
 
