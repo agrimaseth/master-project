@@ -18,7 +18,9 @@ import operator
 import sys
 from sklearn import model_selection, preprocessing, linear_model, naive_bayes, metrics, svm
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
-from sklearn import decomposition, ensemble
+from sklearn.feature_selection import SelectKBest
+from sklearn.feature_selection import chi2,f_classif
+import numpy as np
 
 import pandas as pd
 
@@ -32,14 +34,27 @@ def train_model(classifier, feature_vector_train, label, feature_vector_valid, i
     
     if is_neural_net:
         predictions = predictions.argmax(axis=-1)
+    
     return probs, predictions
 
-def train_main(task_id, query_id):
-    db = MySQLdb.connect("localhost", "root", "", "test", charset='utf8', autocommit=True)
+def get_best_features(tfidf_vect, xtrain_tfidf, labels):
+        # Create and fit selector
+    chi2_selector = SelectKBest(f_classif, k=20)
+    chi2_selector.fit(xtrain_tfidf, labels)
+    # Get columns to keep
+    chi2_scores = pd.DataFrame(list(zip(tfidf_vect.get_feature_names(), chi2_selector.scores_, chi2_selector.pvalues_)), 
+                                       columns=['ftr', 'score', 'pval'])
+
+    kbest = np.asarray(tfidf_vect.get_feature_names())[chi2_selector.get_support()]
+
+    return kbest
+
+def train_main(task_id):
+    db = MySQLdb.connect("localhost", "root", "", "test", charset='utf8')
     
     cursor = db.cursor()
     
-    sql = "SELECT abstract, label FROM articles where label = 1 or label = 3"
+    sql = "SELECT abstract, label FROM articles where taskid=" + str(task_id) + " and label = 1 or label = 3"
     abstracts = []
     labels = []
     try:
@@ -51,8 +66,8 @@ def train_main(task_id, query_id):
     except:
        print ("Error: unable to fecth data")
     
-    
-    sql2 = "SELECT abstract, artid FROM articles where taskid=" + str(task_id) + " and queryid=" + str(query_id)
+
+    sql2 = "SELECT abstract, artid FROM articles where taskid=" + str(task_id) 
     abstracts_all = []
     ids = []
     try:
@@ -75,21 +90,24 @@ def train_main(task_id, query_id):
     tfidf_vect.fit(abstracts)
     xtrain_tfidf =  tfidf_vect.transform(abstracts)
     xvalid_tfidf =  tfidf_vect.transform(abstracts_all)
+
+    # get features idf score and print top10
+#    idf = tfidf_vect.idf_
+#    feature_dict = dict(zip(tfidf_vect.get_feature_names(), idf))
+#    sorted_feature_dict = sorted(feature_dict.items(), key=operator.itemgetter(1))
+#    top10_features = []
+#    count = 0
+#    for item in sorted_feature_dict: 
+#        if count == 10:
+#            break
+#        top10_features.append(item[0])
+#        count += 1
+#        
+#    print(top10_features)
     
-    # get features tf-idf score
-    idf = tfidf_vect.idf_
-    feature_dict = dict(zip(tfidf_vect.get_feature_names(), idf))
-    sorted_feature_dict = sorted(feature_dict.items(), key=operator.itemgetter(1))
-    top10_features = []
-    count = 0
-    for item in sorted_feature_dict: 
-        if count == 10:
-            break
-        top10_features.append(item[0])
-        count += 1
-        
-    print(top10_features)
-    
+    # get top10 using sklearn feature selection
+    k_best_features = get_best_features(tfidf_vect, xtrain_tfidf, labels)
+    print(k_best_features)
     
     #    # ngram level tf-idf 
     #    tfidf_vect_ngram = TfidfVectorizer(analyzer='word', token_pattern=r'\w{1,}', ngram_range=(2,3), max_features=5000)
@@ -104,18 +122,20 @@ def train_main(task_id, query_id):
     #    xvalid_tfidf_ngram_chars =  tfidf_vect_ngram_chars.transform(abstracts_all) 
     #    
     # Naive Bayes on Word Level TF IDF Vectors
-    probs, predictions = train_model(naive_bayes.MultinomialNB(), xtrain_tfidf, train_y, xvalid_tfidf)
-    
+    probs, predictions = train_model(naive_bayes.MultinomialNB(), xtrain_tfidf, train_y, xvalid_tfidf)   
+ 
     pred_label = ["Related", "Non-related"]
-    for i in range(0,1000):
-        sql_update = "UPDATE articles SET score=" + str(probs[i][0]) + ", pred_label='" + pred_label[predictions[i]] + "', uncert_score=" + str(abs(0.5-probs[i][0])) + " where taskid=" + str(task_id) + " and queryid=" + str(query_id) + " and artid=" + str(ids[i])
-        cursor.execute(sql_update)
-    
+
+
+    for i in range(0, len(ids)):        
+        sql_insert = "insert into articles (taskid, artid) value (" + str(task_id) + "," + str(ids[i]) + ")  on duplicate key update score = " + str(probs[i][0]) + ", pred_label = '" + pred_label[predictions[i]] + "', uncert_score = " + str(1-probs[i][0])
+        cursor.execute(sql_insert)
+ 
+    db.commit()
     cursor.close()
     db.close()
 
 if __name__ == '__main__':
     task_id = sys.argv[1]
-    query_id = sys.argv[2]
-    train_main(task_id, query_id)
+    train_main(task_id)
 

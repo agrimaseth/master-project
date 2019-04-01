@@ -51,7 +51,7 @@
 
               var srch_res = "<span><b>Search Results</b></span><br><br>" +
                   "<span>Total:" + total + "   Results</span><br>" +
-                  "<span>Showing first 1000</span><br>" +
+                  "<span>Showing first " + count + "</span><br>" +
                   "<button type=\"button\" id=\"first\">First</button><br>" +
                   "<button type=\"button\" id=\"prev\">Prev</button><br>" +
                   "<form name=\"page\">\n" +
@@ -60,6 +60,7 @@
                   "</form>" +
                   "<button type=\"button\" id=\"next\">Next</button><br>" +
                   "<button type=\"button\" id=\"last\">Last</button><br>";
+              $("#C").html("");
               $("#C").html(srch_res);
 
             } // end if curPage is 1
@@ -87,7 +88,7 @@
 
                 for (var i = 0; i < ids.length; i++) {
                   titles[i] = titles_xml[i].innerHTML.replace(/<[^>]+>/g,"");
-                  tab += "<tr class=\"res_row\" artid="+i+" id = "+ids[i]+"><td>" + ids[i] + "</td><td>" + titles[i] + "</td>" +
+                  tab += "<tr class=\"res_row\" id="+i+" artid = "+ids[i]+"><td>" + ids[i] + "</td><td><a href=https://www.ncbi.nlm.nih.gov/pubmed/"+ ids[i] +">" + titles[i] + "</a></td>" +
                       "    <td ALIGN=\"center\">" +
                       "       <select id=\"label"+i+"\">" +
                       "            <option value=\"0\">Not Specified</option>" +
@@ -104,8 +105,8 @@
                 // display the details when user hover the row
                 $(".res_row").mouseover(function(){
                   $(this).css("background","yellow");
-                  var artid = $(this).attr('artid');
-                  var ab_text = abstracts_xml[artid].getElementsByTagName("AbstractText");
+                  var index = $(this).attr('id');
+                  var ab_text = abstracts_xml[index].getElementsByTagName("AbstractText");
                   var ab_text_total = "";
                   for(var i = 0; i < ab_text.length; i++){
                     if(ab_text[i].getAttribute("Label")!=null)
@@ -121,6 +122,7 @@
                 })
 
                 $(".res_row").mouseleave(function(){
+                  $("#D").html("");
                   $(this).css("background","");
                 });
 
@@ -133,6 +135,7 @@
                     curPage = curPage - 1;
                   if (label == "next" && curPage < totalPages)
                     curPage = curPage + 1;
+                  $("#usrpage").val(curPage);
                 }
 
                 $("#first").unbind("click").click(function(){
@@ -155,11 +158,12 @@
                 });
                 $("#setpageBtn").unbind("click").click(function(){
                   var p = parseInt(document.getElementById("usrpage").value);
-                  if(0 < p < totalPages){
+                  if(0 < p && p <= totalPages){
                     curPage = p;
                     $("#searchBtn").click();
                   }else{
                     alert("invalid page number!");
+                    $("#usrpage").val("");
                   }
                 });
               }, // end complete for detail
@@ -192,6 +196,13 @@
       $("#usrInput").attr("disabled", true);
       $("#searchBtn").attr("disabled", true);
 
+      $('body').block( {
+        message : 'Inserting Data, Please Wait...',
+        css : {
+          border : '3px solid khaki'
+        }
+      });
+
       // insert query into query table
       $.post("insert_query.php",
           {
@@ -200,7 +211,7 @@
             queryid: query_id
           },
           function (data, status) {
-           alert(data);
+            console.log("Inserted Query!");
           }
       );
 
@@ -276,8 +287,10 @@
                 }); // end get articles info -- ajax 1
               } // end complete of ajax 0
             }); // end ajax 0
-            if (i == 4)
+            if (i == 4){
+              $.unblockUI();
               alert("Insert data finished!");
+            }
           }, 1500 * i);
 
         })(i);
@@ -294,13 +307,14 @@
       var ids = [];
       for(var i = 0; i < 20; i++) {
         labels[i] = $("#label" + i).val();
-        ids[i] = $( "tr[artid='"+i+"']" ).attr("id");
+        ids[i] = $( "tr[id='"+i+"']" ).attr("artid");
         console.log(ids[i]);
         console.log(labels[i]);
       }
 
       $.post("update_labels.php",
           {
+            taskid: task_id,
             ids: ids,
             labels: labels
           },
@@ -323,8 +337,52 @@
     $("#stoptask").unbind("click").click(function() {
      // start new task
      in_the_task = 0;
-     alert("Already stopped current task!");
-     $("#usrInput").val("");
+
+     // export search results into csv and download
+      $.ajax({
+        url: "stop_and_export.php",
+        data: {
+          taskid: task_id
+        },
+        type: "POST",
+        success: function (data)
+        {
+          var curquery = document.getElementById("usrInput").value;
+          var csvContent = "Last Query:," + curquery + ",\n" + data;
+          var link = document.createElement("a");
+          var blob = new Blob([csvContent], {type: "text/csv;charset=utf-8;\uFEFF"});
+          link.setAttribute("href", URL.createObjectURL(blob));
+          var date = new Date();
+          var fulldate = date.getFullYear()+"-"+date.getMonth()+"-"+date.getDate();
+          var filename = "results_task" + task_id +"_"+ fulldate;
+          link.setAttribute("download", filename + ".csv");
+          link.click();
+          alert("Stopped current task and downloaded results!");
+        }
+      });
+
+     // $.GET("stop_and_export.php",
+     //      {
+     //        taskid: 6
+     //      },
+     //      function (data)
+     //      {
+     //        var curquery = document.getElementById("usrInput").value;
+     //        var data = "data:text/csv;charset=utf-8,\ufeff" + "LastQuery:," + curquery + "\n" + data;
+     //        var link = document.createElement("a");
+     //        link.setAttribute("href", data);
+     //        var date = new Date();
+     //        var fulldate = date.getFullYear()+"-"+date.getMonth()+"-"+date.getDate();
+     //        var filename = "results_task" + task_id +"_"+ fulldate;
+     //        link.setAttribute("download", filename + ".csv");
+     //        link.click();
+     //        alert("Stopped current task and downloaded results!");
+     //      }
+     //  );
+
+      $("#usrInput").val("");
+      $("#suggest").val("");
+      $("#A").html("");
       $("#starttask").attr("disabled", true);
       $("#submit").attr("disabled", true);
       $("#train").attr("disabled", true);
@@ -338,13 +396,18 @@
       var curPage = 1;
       var sortBy = "score";
 
+      $('body').block( {
+        message : 'Training Data, Please Wait...',
+        css : {
+          border : '3px solid khaki'
+        }
+      });
 
       $.ajax({
         method: "POST",
         url: "start_train.php",
         data:{
                 taskid: task_id,
-                queryid: query_id
         },
         success: function(data){
 
@@ -358,15 +421,12 @@
               "<button type=\"button\" id=\"next\">Next</button><br>" +
               "<button type=\"button\" id=\"last\">Last</button><br>";
 
+          $("#C").html("");
           $("#C").html(srch_res);
           $("#C1").html("<br><span>Current Page: "+curPage+"</span>");
 
+          $.unblockUI();
           alert("Finished Training!");
-          data.replace("\n","");
-          data.replace("'","");
-          data.replace("[","");
-          data.replace("]","");
-          data.replace(",","");
           $("#suggest").html(data);
           console.log(data);
         },
@@ -393,15 +453,15 @@
                   curPage = curPage + 1;
                 if (label == "set"){
                   var p = parseInt(document.getElementById("usrpage").value);
-                  if(0 < p <= 50){
+                  if(0 < p && p <= 50){
                     curPage = p;
                   }else{
                     alert("invalid page number!");
+                    $("#usrpage").val("");
                   }
                 }
                 $.post("get_update_after_train.php",
                     { taskid: task_id,
-                      queryid: query_id,
                       startnum: (curPage-1)*20,
                       sortby: sortBy},
                     function(data){
