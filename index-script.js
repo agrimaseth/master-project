@@ -1,4 +1,4 @@
- $(document).ready(function(){
+$(document).ready(function(){
 
       var perNum = 20;
       var curPage = 1;
@@ -8,6 +8,41 @@
       var in_the_task = 0;
       var task_id = 0;
       var query_id = 0;
+      var sortBy = "artid";
+
+      function setPage(label){
+        if (label == "first")
+          curPage = 1;
+        if (label == "last")
+          curPage = totalPages;
+        if (label == "prev" && curPage > 1)
+          curPage = curPage - 1;
+        if (label == "next" && curPage < totalPages)
+          curPage = curPage + 1;
+        if (label == "set"){
+          var p = parseInt(document.getElementById("usrpage").value);
+          if(0 < p && p <= totalPages){
+            curPage = p;
+          }else{
+            alert("invalid page number!");
+            $("#usrpage").val("");
+          }
+        }
+        $("#usrpage").val(curPage);
+        $("#C1").html("<br><span>Current Page: "+curPage+"</span>");
+      }
+
+      function getUpdate(url) {
+        $.post(url,
+            {
+              taskid: task_id,
+              startnum: (curPage - 1) * 20,
+              sortby: sortBy
+            },
+            function (data) {
+              $("#A").html(data);
+            });
+      }
 
       // get latest task id
       $.get("getmax_taskid.php", function(data){
@@ -18,7 +53,6 @@
           task_id = 0;
         }
       });
-
 
       $("#usrInput").keyup(function(){
         curPage = 1;
@@ -49,19 +83,22 @@
               count = Math.min(1000, parseInt(total));
               totalPages = Math.ceil(count/perNum);
 
-              var srch_res = "<span><b>Search Results</b></span><br><br>" +
-                  "<span>Total:" + total + "   Results</span><br>" +
-                  "<span>Showing first " + count + "</span><br>" +
-                  "<button type=\"button\" id=\"first\">First</button><br>" +
-                  "<button type=\"button\" id=\"prev\">Prev</button><br>" +
-                  "<form name=\"page\">\n" +
-                  "    <input type=\"text\" id=\"usrpage\">" +
-                  "    <input type=\"button\" id =\"setpageBtn\" value=\"Go\">" +
-                  "</form>" +
-                  "<button type=\"button\" id=\"next\">Next</button><br>" +
-                  "<button type=\"button\" id=\"last\">Last</button><br>";
+              var srch_res =  "<span><b>Search Results</b></span><br><br>" +
+                              "<span>Total:" + total + "   Results</span><br>" +
+                              "<span>Showing first " + count + "</span><br>";
+              $("#C0").html("");
+              $("#C0").html(srch_res);
+
+              var buttons = "<button type=\"button\" id=\"first\">First</button><br>" +
+                              "<button type=\"button\" id=\"prev\">Prev</button><br>" +
+                              "<form name=\"page\">\n" +
+                              "    <input type=\"text\" id=\"usrpage\">" +
+                              "    <input type=\"button\" id =\"setpageBtn\" value=\"Go\">" +
+                              "</form>" +
+                              "<button type=\"button\" id=\"next\">Next</button><br>" +
+                              "<button type=\"button\" id=\"last\">Last</button><br>";
               $("#C").html("");
-              $("#C").html(srch_res);
+              $("#C").html(buttons);
 
             } // end if curPage is 1
 
@@ -81,23 +118,17 @@
               method: "GET",
               url: newurl,
               success:function(data){
-                var tab = "<table class=\"gridtable\" id=\"tbb\"><tbody><tr><td>Document ID</td><td>Title</td><td>Label</td></tr>";
+                var tab = "<table class=\"gridtable\" id=\"tbb\"><tbody><tr><td>Document ID</td><td>Title</td></tr>";
                 //article_data_xml = data.getElementsByTagName("PubmedArticle");
                 abstracts_xml = data.getElementsByTagName("Abstract");
                 titles_xml = data.getElementsByTagName("ArticleTitle");
 
                 for (var i = 0; i < ids.length; i++) {
-                  titles[i] = titles_xml[i].innerHTML.replace(/<[^>]+>/g,"");
-                  tab += "<tr class=\"res_row\" id="+i+" artid = "+ids[i]+"><td>" + ids[i] + "</td><td><a href=https://www.ncbi.nlm.nih.gov/pubmed/"+ ids[i] +">" + titles[i] + "</a></td>" +
-                      "    <td ALIGN=\"center\">" +
-                      "       <select id=\"label"+i+"\">" +
-                      "            <option value=\"0\">Not Specified</option>" +
-                      "            <option value=\"1\">Yes</option>" +
-                      "            <option value=\"2\">Maybe</option>" +
-                      "            <option value=\"3\">No</option>" +
-                      "       </select>" +
-                      "    </td>   " +
-                      "</tr>";
+                    titles[i] = "";
+                    if(titles_xml[i]){
+                        titles[i] = titles_xml[i].innerHTML.replace(/<[^>]+>/g,"");}
+                    tab += "<tr class=\"res_row\" id="+i+" artid = "+ids[i]+"><td>" + ids[i] + "</td><td><a href=https://www.ncbi.nlm.nih.gov/pubmed/"+ ids[i] +" target=\"_blank\">" + titles[i] + "</a></td>" +
+                           "</tr>";
                 }
                 tab += "</tbody></table>";
                 $("#A").html(tab);
@@ -126,18 +157,6 @@
                   $(this).css("background","");
                 });
 
-                function setPage(label){
-                  if (label == "first")
-                    curPage = 1;
-                  if (label == "last")
-                    curPage = totalPages;
-                  if (label == "prev" && curPage > 1)
-                    curPage = curPage - 1;
-                  if (label == "next" && curPage < totalPages)
-                    curPage = curPage + 1;
-                  $("#usrpage").val(curPage);
-                }
-
                 $("#first").unbind("click").click(function(){
                   setPage("first");
                   $("#searchBtn").click();
@@ -157,20 +176,13 @@
                   $("#searchBtn").click();
                 });
                 $("#setpageBtn").unbind("click").click(function(){
-                  var p = parseInt(document.getElementById("usrpage").value);
-                  if(0 < p && p <= totalPages){
-                    curPage = p;
-                    $("#searchBtn").click();
-                  }else{
-                    alert("invalid page number!");
-                    $("#usrpage").val("");
-                  }
+                  setPage("set");
+                  $("#searchBtn").click();
                 });
               }, // end complete for detail
               complete:function(){
                 $("#C1").html("<br><span>Current Page: "+curPage+"</span>");
               }
-
             }); // end ajax for detail
 
           }  // end complete for first ajax
@@ -178,372 +190,358 @@
 
       }); // end click search button function
 
-    // insert first 1000 articles into database when getstarted clicked
-    $("#starttask").unbind("click").click(function() {
-      if(in_the_task == 0) { // start a new task
-        task_id += 1;
-        query_id = 0;
-        in_the_task = 1;
-      }else{ // still in the current task
-        query_id += 1;
-      }
-
-      var s = document.getElementById("usrInput").value;
-
-      $("#starttask").attr("disabled",true);
-      $("#submit").attr("disabled",false);
-      $("#stoptask").attr("disabled",false);
-      $("#usrInput").attr("disabled", true);
-      $("#searchBtn").attr("disabled", true);
-
-      $('body').block( {
-        message : 'Inserting Data, Please Wait...',
-        css : {
-          border : '3px solid khaki'
-        }
-      });
-
-      // insert query into query table
-      $.post("insert_query.php",
-          {
-            query: s,
-            taskid: task_id,
-            queryid: query_id
-          },
-          function (data, status) {
-            console.log("Inserted Query!");
+      // insert first 1000 articles into database when getstarted clicked
+      $("#starttask").unbind("click").click(function() {
+          if(in_the_task == 0) { // start a new task
+            task_id += 1;
+            query_id = 0;
+            in_the_task = 1;
+          }else{ // still in the current task
+            query_id += 1;
           }
-      );
 
-      for (var i = 0; i < 5; i++) {
-        (function (i) {
-          setTimeout(function () {
-            // insert articles info into article table
-            var s = document.getElementById("usrInput").value;
-            var ids_xml = [];
-            var ids = [];
-            var abstracts_xml = [];
-            var abstracts = [];
-            var titles_xml = [];
-            var titles = [];
+          curPage = 1;
 
-            console.log("now inserting the " + i + "th 200 results");
-            console.log(ids);
+          if(query_id > 0){
+              sortBy = "uncert_score";
+          }
 
-            // Get article ids -- ajax 0
-            $.ajax({
-              method: "GET",
-              url: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=" + s + "&retmax=200&retstart=" + i * 200,
-              success: function (data) {
-                ids_xml = data.getElementsByTagName("Id");
-              },
-              complete: function () {
-                var newurl = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id="
-                for (var i = 0; i < ids_xml.length; i++) {
-                  ids[i] = ids_xml[i].childNodes[0].nodeValue;
-                  if (i < ids_xml.length - 1)
-                    newurl += ids[i] + ",";
-                  else
-                    newurl += ids[i];
-                }
-                // Get articles info -- ajax 1
-                $.ajax({
-                  method: "GET",
-                  url: newurl,
-                  success: function (data) {
-                    abstracts_xml = data.getElementsByTagName("Abstract");
-                    titles_xml = data.getElementsByTagName("ArticleTitle");
+          var s = document.getElementById("usrInput").value;
 
-                    // prepare data to be sent to database
-                    for (var i = 0; i < ids.length; i++) {
-                      titles[i] = titles_xml[i].innerHTML.replace(/<[^>]+>/g,"");
-                      abstracts[i] = "";
-                      if (abstracts_xml[i]) {
-                        var ab_text = abstracts_xml[i].getElementsByTagName("AbstractText");
-                        for (var j = 0; j < ab_text.length; j++) {
-                          if (ab_text[j].childNodes[0])
-                            abstracts[i] += ab_text[j].innerHTML.replace(/<[^>]+>/g,"");
-                        }
-                      }
-                    }
-                    console.log(abstracts.length);
-                  },
-                  complete: function () {
-                    $.post("insert_data.php",
-                        {
-                          taskid: task_id,
-                          queryid: query_id,
-                          query: s,
-                          id_list: ids,
-                          title_list: titles,
-                          abstract_list: abstracts
-                        },
-                        function (data) {
-                         //alert(data);
-                         console.log("data:"+data);
-                        }
-                    );
-                  }
-                }); // end get articles info -- ajax 1
-              } // end complete of ajax 0
-            }); // end ajax 0
-            if (i == 4){
-              $.unblockUI();
-              alert("Insert data finished!");
+          $("#starttask").attr("disabled",true);
+          $("#submit").attr("disabled",false);
+          $("#stoptask").attr("disabled",false);
+          $("#usrInput").attr("disabled", true);
+          $("#searchBtn").attr("disabled", true);
+
+          var srch_res = "<span>Showing " + count + " Results</span><br>";
+          $("#C0").html("");
+          $("#C0").html(srch_res);
+
+          $('body').block( {
+            message : 'Inserting Data, Please Wait...',
+            css : {
+              border : '3px solid khaki'
             }
-          }, 1500 * i);
+          });
 
-        })(i);
+          // insert query into query table
+          $.post("insert_query.php",
+              {
+                query: s,
+                taskid: task_id,
+                queryid: query_id
+              },
+              function (data, status) {
+                console.log("Inserted Query!");
+              }
+          );
 
-      } // end for 5
+          // insert data into article table
+          for (var i = 0; i <= Math.ceil(count/200); i++) {
+              (function (i) {
+                  setTimeout(function () {
+                        // insert articles info into article table
+                        var s = document.getElementById("usrInput").value;
+                        var ids_xml = [];
+                        var ids = [];
+                        var abstracts_xml = [];
+                        var abstracts = [];
+                        var titles_xml = [];
+                        var titles = [];
+                        var newurl = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id="
+
+                        if(i == Math.ceil(count/200)){
+                            $.unblockUI();
+                            alert("Insert data finished!");
+                            getUpdate("show_after_insert.php");
+                        }else {
+                            console.log("now inserting the " + i + "th 200 results");
+                            // Get article ids -- ajax 0
+                            $.ajax({
+                                method: "GET",
+                                url: "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=" + s + "&retmax=200&retstart=" + i * 200,
+                                success: function (data) {
+                                    ids_xml = data.getElementsByTagName("Id");
+                                    for (var i = 0; i < ids_xml.length; i++) {
+                                        ids[i] = ids_xml[i].childNodes[0].nodeValue;
+                                        if (i < ids_xml.length - 1)
+                                            newurl += ids[i] + ",";
+                                        else
+                                            newurl += ids[i];
+                                    }
+                                },
+                                complete: function () {
+                                    // Get articles info -- ajax 1
+                                    $.ajax({
+                                        method: "GET",
+                                        url: newurl,
+                                        success: function (data) {
+
+                                            abstracts_xml = data.getElementsByTagName("Abstract");
+                                            titles_xml = data.getElementsByTagName("ArticleTitle");
+
+                                            // prepare data to be sent to database
+                                            for (var i = 0; i < ids.length; i++) {
+                                                titles[i] = "";
+                                                if(titles_xml[i]){
+                                                    titles[i] = titles_xml[i].innerHTML.replace(/<[^>]+>/g, "");
+                                                }
+                                                abstracts[i] = "";
+                                                if (abstracts_xml[i]) {
+                                                    var ab_text = abstracts_xml[i].getElementsByTagName("AbstractText");
+                                                    for (var j = 0; j < ab_text.length; j++) {
+                                                        if (ab_text[j].childNodes[0])
+                                                            abstracts[i] += ab_text[j].innerHTML.replace(/<[^>]+>/g, "");
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        complete: function () {
+                                            $.post("insert_data.php",
+                                                {
+                                                    taskid: task_id,
+                                                    queryid: query_id,
+                                                    query: s,
+                                                    id_list: ids,
+                                                    title_list: titles,
+                                                    abstract_list: abstracts
+                                                },
+                                                function (data) {
+                                                    //alert(data);
+                                                    console.log("data:"+data);
+                                                }
+                                            );
+                                        }
+                                    }); // end get articles info -- ajax 1
+                                } // end complete of ajax 0
+                            }); // end ajax 0
+                        }
+                    }, 1500 * i);
+
+                })(i);
+
+            } // end for 5
+
+          $("#first").unbind("click").click(function(){
+            setPage("first");
+            getUpdate("show_after_insert.php");
+          });
+          $("#prev").unbind("click").click(function(){
+            setPage("prev");
+            getUpdate("show_after_insert.php");
+          });
+          $("#next").unbind("click").click(function(){
+            setPage("next");
+            getUpdate("show_after_insert.php");
+          });
+          $("#last").unbind("click").click(function(){
+            setPage("last");
+            getUpdate("show_after_insert.php");
+          });
+          $("#setpageBtn").unbind("click").click(function(){
+            setPage("set");
+            getUpdate("show_after_insert.php");
+          });
 
       }); // end getstarted click
 
-    $("#submit").unbind("click").click(function() {
-      $("#train").attr("disabled",false);
-      $("#stoplabel").attr("disabled",false);
+      // update user labels
+      $("#submit").unbind("click").click(function() {
+          $("#train").attr("disabled",false);
+          $("#stoplabel").attr("disabled",false);
 
-      var labels = [];
-      var ids = [];
-      for(var i = 0; i < 20; i++) {
-        labels[i] = $("#label" + i).val();
-        ids[i] = $( "tr[id='"+i+"']" ).attr("artid");
-        console.log(ids[i]);
-        console.log(labels[i]);
-      }
-
-      $.post("update_labels.php",
-          {
-            taskid: task_id,
-            ids: ids,
-            labels: labels
-          },
-          function (data) {
-            alert(data);
+          var labels = [];
+          var labeled_ids = [];
+          var j = 0;
+          for(var i = 0; i < 20; i++) {
+              if($("#label" + i).val()!=0){
+                labels[j] = $("#label" + i).val();
+                labeled_ids[j] = $( "tr[id='"+i+"']" ).attr("artid");
+                j++;
+              }
           }
-      );
-    });
+          console.log(labeled_ids);
+          console.log(labels);
 
-    $("#stoplabel").unbind("click").click(function(){
-      $("#starttask").attr("disabled", true);
-      $("#submit").attr("disabled", true);
-      $("#train").attr("disabled", true);
-      $("#stoplabel").attr("disabled", true);
-      $("#stoptask").attr("disabled", true);
-      $("#usrInput").attr("disabled", false);
-      $("#searchBtn").attr("disabled", false);
-    });
-
-    $("#stoptask").unbind("click").click(function() {
-     // start new task
-     in_the_task = 0;
-
-     // export search results into csv and download
-      $.ajax({
-        url: "stop_and_export.php",
-        data: {
-          taskid: task_id
-        },
-        type: "POST",
-        success: function (data)
-        {
-          var curquery = document.getElementById("usrInput").value;
-          var csvContent = "Last Query:," + curquery + ",\n" + data;
-          var link = document.createElement("a");
-          var blob = new Blob([csvContent], {type: "text/csv;charset=utf-8;\uFEFF"});
-          link.setAttribute("href", URL.createObjectURL(blob));
-          var date = new Date();
-          var fulldate = date.getFullYear()+"-"+date.getMonth()+"-"+date.getDate();
-          var filename = "results_task" + task_id +"_"+ fulldate;
-          link.setAttribute("download", filename + ".csv");
-          link.click();
-          alert("Stopped current task and downloaded results!");
-        }
+          $.post("update_labels.php",
+              {
+                taskid: task_id,
+                ids: labeled_ids,
+                labels: labels
+              },
+              function (data) {
+                alert(data);
+              }
+          );
       });
 
-     // $.GET("stop_and_export.php",
-     //      {
-     //        taskid: 6
-     //      },
-     //      function (data)
-     //      {
-     //        var curquery = document.getElementById("usrInput").value;
-     //        var data = "data:text/csv;charset=utf-8,\ufeff" + "LastQuery:," + curquery + "\n" + data;
-     //        var link = document.createElement("a");
-     //        link.setAttribute("href", data);
-     //        var date = new Date();
-     //        var fulldate = date.getFullYear()+"-"+date.getMonth()+"-"+date.getDate();
-     //        var filename = "results_task" + task_id +"_"+ fulldate;
-     //        link.setAttribute("download", filename + ".csv");
-     //        link.click();
-     //        alert("Stopped current task and downloaded results!");
-     //      }
-     //  );
+      $("#stoplabel").unbind("click").click(function(){
+          $("#starttask").attr("disabled", true);
+          $("#submit").attr("disabled", true);
+          $("#train").attr("disabled", true);
+          $("#stoplabel").attr("disabled", true);
+          $("#stoptask").attr("disabled", true);
+          $("#usrInput").attr("disabled", false);
+          $("#searchBtn").attr("disabled", false);
+      });
 
-      $("#usrInput").val("");
-      $("#suggest").val("");
-      $("#A").html("");
-      $("#starttask").attr("disabled", true);
-      $("#submit").attr("disabled", true);
-      $("#train").attr("disabled", true);
-      $("#stoplabel").attr("disabled", true);
-      $("#stoptask").attr("disabled", true);
-      $("#usrInput").attr("disabled", false);
-      $("#searchBtn").attr("disabled", false);
+      // stop task and export results
+      $("#stoptask").unbind("click").click(function() {
+         // start new task
+         in_the_task = 0;
+         curPage = 1;
+         var curquery = document.getElementById("usrInput").value;
+
+         // export search results into csv and download
+          $.ajax({
+            url: "stop_and_export.php",
+            data: {
+              taskid: task_id
+            },
+            type: "POST",
+            success: function (data)
+            {
+              var csvContent = "Last Query:," + curquery + ",\n" + data;
+              var link = document.createElement("a");
+              var blob = new Blob([csvContent], {type: "text/csv;charset=utf-8;\uFEFF"});
+              link.setAttribute("href", URL.createObjectURL(blob));
+              var date = new Date();
+              var fulldate = date.getFullYear()+"-"+date.getMonth()+"-"+date.getDate();
+              var filename = "results_task" + task_id +"_"+ fulldate;
+              link.setAttribute("download", filename + ".csv");
+              link.click();
+              alert("Stopped current task and downloaded results!");
+            }
+          });
+
+          $("#usrInput").val("");
+          $("#suggest").val("");
+          $("#C").html("");
+          $("#C0").html("");
+          $("#C1").html("");
+          $("#A").html("");
+          $("#D").html("");
+          $("#starttask").attr("disabled", true);
+          $("#submit").attr("disabled", true);
+          $("#train").attr("disabled", true);
+          $("#stoplabel").attr("disabled", true);
+          $("#stoptask").attr("disabled", true);
+          $("#usrInput").attr("disabled", false);
+          $("#searchBtn").attr("disabled", false);
    });
 
-    $("#train").unbind("click").click(function(){
-      var curPage = 1;
-      var sortBy = "score";
+      // start train data
+      $("#train").unbind("click").click(function(){
+          curPage = 1;
+          sortBy = "score";
+          $('body').block( {
+            message : 'Training Data, Please Wait...',
+            css : {
+              border : '3px solid khaki'
+            }
+          });
+          $("#usrpage").val(curPage);
 
-      $('body').block( {
-        message : 'Training Data, Please Wait...',
-        css : {
-          border : '3px solid khaki'
-        }
-      });
-
-      $.ajax({
-        method: "POST",
-        url: "start_train.php",
-        data:{
-                taskid: task_id,
-        },
-        success: function(data){
-
-          var srch_res = "<span><b>Training Results</b></span><br><br>" +
-              "<button type=\"button\" id=\"first\">First</button><br>" +
-              "<button type=\"button\" id=\"prev\">Prev</button><br>" +
-              "<form name=\"page\">\n" +
-              "    <input type=\"text\" id=\"usrpage\">" +
-              "    <input type=\"button\" id =\"setpageBtn\" value=\"Go\">" +
-              "</form>" +
-              "<button type=\"button\" id=\"next\">Next</button><br>" +
-              "<button type=\"button\" id=\"last\">Last</button><br>";
-
-          $("#C").html("");
-          $("#C").html(srch_res);
-          $("#C1").html("<br><span>Current Page: "+curPage+"</span>");
-
-          $.unblockUI();
-          alert("Finished Training!");
-          $("#suggest").html(data);
-          console.log(data);
-        },
-        complete: function(){
           $.ajax({
             method: "POST",
-            url: "get_update_after_train.php",
-            data: {
-              taskid: task_id,
-              queryid: query_id,
-              startnum: (curPage-1)*20,
-              sortby: sortBy},
+            url: "start_train.php",
+            data:{
+                    taskid: task_id,
+            },
             success: function(data){
-              $("#A").html(data);},
+              var srch_res = "<span>Training Results</span><br>";
+              $("#C0").html("");
+              $("#C0").html(srch_res);
+              $("#C1").html("<br><span>Current Page: "+curPage+"</span>");
+
+              $.unblockUI();
+              alert("Finished Training!");
+              console.log(data);
+              $("#suggest").html(data);
+            },
             complete: function(){
-              function setPage(label){
-                if (label == "first")
-                  curPage = 1;
-                if (label == "last")
-                  curPage = 50;
-                if (label == "prev" && curPage > 1)
-                  curPage = curPage - 1;
-                if (label == "next" && curPage < 50)
-                  curPage = curPage + 1;
-                if (label == "set"){
-                  var p = parseInt(document.getElementById("usrpage").value);
-                  if(0 < p && p <= 50){
-                    curPage = p;
-                  }else{
-                    alert("invalid page number!");
-                    $("#usrpage").val("");
-                  }
-                }
-                $.post("get_update_after_train.php",
-                    { taskid: task_id,
-                      startnum: (curPage-1)*20,
-                      sortby: sortBy},
-                    function(data){
-                      $("#A").html(data);
-                    }
-                );
-                $("#C1").html("<br><span>Current Page: "+curPage+"</span>");
-                console.log(curPage);
-                console.log(sortBy);
-              } // end function setPage
+              getUpdate("get_update_after_train.php");
 
               $("#first").unbind("click").click(function(){
-                setPage("first");
-              });
+                    setPage("first");
+                    getUpdate("get_update_after_train.php");
+                  });
               $("#prev").unbind("click").click(function(){
-                setPage("prev");
-              });
-
+                    setPage("prev");
+                    getUpdate("get_update_after_train.php");
+                  });
               $("#next").unbind("click").click(function(){
-                setPage("next");
-              });
-
+                    setPage("next");
+                    getUpdate("get_update_after_train.php");
+                  });
               $("#last").unbind("click").click(function(){
-                setPage("last");
-              });
+                    setPage("last");
+                    getUpdate("get_update_after_train.php");
+                  });
               $("#setpageBtn").unbind("click").click(function(){
-                setPage("set");
-              });
+                    setPage("set");
+                    getUpdate("get_update_after_train.php");
+                  });
 
               $("#A").on("click", "#docid", function(){
-                sortBy = "artid";
-                setPage("first");
-              });
+                    sortBy = "artid";
+                    setPage("first");
+                    getUpdate("get_update_after_train.php");
+                  });
 
               $("#A").on("click", "#title", function(){
-                sortBy = "title";
-                setPage("first");
-              });
+                    sortBy = "title";
+                    setPage("first");
+                    getUpdate("get_update_after_train.php");
+                  });
 
               $("#A").on("click", "#predlab", function(){
-                sortBy = "pred_label";
-                setPage("first");
-              });
+                    sortBy = "pred_label";
+                    setPage("first");
+                    getUpdate("get_update_after_train.php");
+                  });
 
               $("#A").on("click", "#score", function(){
-                sortBy = "score";
-                setPage("first");
-              });
+                    sortBy = "score";
+                    setPage("first");
+                    getUpdate("get_update_after_train.php");
+                  });
 
               $("#A").on("click", "#uncertscore", function(){
-                sortBy = "uncert_score";
-                setPage("first");
-              });
-
-              $("#A").on("mouseover", ".res_row_db", function(){
-                $(this).css("background","yellow");
-                var artid = $(this).attr('artid');
-                $.post("get_abstracts.php",
-                    { artid: artid },
-                    function(data,status){
-                      $("#D").html(data);
-                    }
-                );
-              });
-
-              $("#A").on("mouseleave", ".res_row_db", function(){
-                $(this).css("background","");
-                $("#D").html("");
-              });
-
+                    sortBy = "uncert_score";
+                    setPage("first");
+                    getUpdate("get_update_after_train.php");
+                  });
             } // end inside complete
           }); // end inside ajax
-        } // end outside complete
-      }); // end outside ajax
     }); // end start train button
 
-   $("#copy").click(function(){
+      // copy suggested query
+      $("#copy").click(function(){
        var input = document.getElementById("suggest");
        input.select();
        document.execCommand("copy");
        alert("Copy Query Successfully!");
    });
+
+      $("#A").on("mouseover", ".res_row_db", function(){
+        $(this).css("background","yellow");
+        var artid = $(this).attr('artid');
+        $.ajax({
+            method: "POST",
+            url: "get_abstracts.php",
+            data:{ artid: artid },
+            success: function(data, status) {
+                    $("#D").html(data);
+            }
+            });
+    });
+
+      $("#A").on("mouseleave", ".res_row_db", function(){
+        $(this).css("background","");
+        $("#D").html("");
+    });
 
     }); // end document ready
 

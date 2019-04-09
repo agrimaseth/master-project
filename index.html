@@ -2,7 +2,13 @@
 <head>
     <h1>Simple Search on PubMed</h1>
     <h2>by yiwen Jan 2019</h2>
+    <h3>
+        <a href="">About</a>
+        &nbsp|&nbsp
+        <a href="">User Guidance</a>
+    </h3>
     <link rel="stylesheet" type="text/css" href="styles.css">
+
 </head>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js">
@@ -22,6 +28,8 @@
             <input type="text" id="usrInput" >
             <input type="button" id ="searchBtn" value="search">
         </form>
+        <div id="C0">
+        </div>
         <div id="C">
         </div>
         <div id="C1">
@@ -37,7 +45,7 @@
         <button type="button" id="submit" disabled = "true">Submit Labels</button>
         <button type="button" id="train" disabled = "true">Start Training</button>
         <button type="button" id="stoplabel" disabled = "true">Stop innerloop and start outerloop</button>
-        <button type="button" id="stoptask" >Stop Task and Export</button>
+        <button type="button" id="stoptask" disabled = "true" >Stop Task and Export</button>
         <div id = "A"></div>
     </div>
     <div id="D"><br></div>

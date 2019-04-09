@@ -11,7 +11,7 @@
     $errors = "";
     //exclude duplicate
     for($i = 0; $i < sizeof($ids); $i++){
-        $query = "insert into articles values ($tid, $qid, " . $ids[$i] .  ",'" .
+        $query = "insert into articles value ($tid, $qid, " . $ids[$i] .  ",'" .
             mysqli_real_escape_string($db, $titles[$i]) . "','" . mysqli_real_escape_string($db, $abstracts[$i]) . "', 0,0,null,0) on duplicate key update queryid=".$qid;
         if(!mysqli_query($db,$query)) {
             $flag = 0;
@@ -22,5 +22,4 @@
         echo "Error queries: " . $errors;
     else
         echo "Success!";
-
 ?>
