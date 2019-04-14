@@ -39,7 +39,7 @@ def train_model(classifier, feature_vector_train, label, feature_vector_valid, i
 
 def get_best_features(tfidf_vect, xtrain_tfidf, labels):
         # Create and fit selector
-    mi_selector = SelectKBest(mutual_info_classif, k=10)
+    mi_selector = SelectKBest(mutual_info_classif, k=30)
     mi_selector.fit(xtrain_tfidf, labels)
     # Get columns to keep
     mi_scores = pd.DataFrame(list(zip(tfidf_vect.get_feature_names(), mi_selector.scores_)), 
@@ -48,6 +48,28 @@ def get_best_features(tfidf_vect, xtrain_tfidf, labels):
     kbest = np.asarray(tfidf_vect.get_feature_names())[mi_selector.get_support()]
 
     return kbest
+
+def filter_best_features(k_best_features, abstracts_all, predictions):
+    return_str = ""
+    for afeature in k_best_features:
+        rel_count = 0
+        nrel_count = 0
+        rel_total = 0
+        nrel_total = 0
+        for i, abstract in enumerate(abstracts_all):
+            if predictions[i] == 0:
+                rel_total += 1
+                if afeature in abstract:
+                    rel_count += 1 
+            else:
+                nrel_total +=1
+                if afeature in abstract:
+                    nrel_count += 1 
+        if (rel_count/rel_total) > (nrel_count/nrel_total):
+            return_str += afeature + " "
+
+    return return_str
+    
 
 def train_main(task_id):
     db = MySQLdb.connect("localhost", "root", "", "test", charset='utf8')
@@ -92,43 +114,25 @@ def train_main(task_id):
     xvalid_tfidf =  tfidf_vect.transform(abstracts_all)
 
     # get features idf score and print top10
-    idf = tfidf_vect.idf_
-    feature_dict = dict(zip(tfidf_vect.get_feature_names(), idf))
-    sorted_feature_dict = sorted(feature_dict.items(), key=operator.itemgetter(1))
-    top10_features = ""
-    count = 0
-    for item in sorted_feature_dict: 
-        if count == 10:
-            break
-        top10_features += item[0]
-        top10_features += " "
-        count += 1
-        
-    print(top10_features)
-    
-    
-    #    # ngram level tf-idf 
-    #    tfidf_vect_ngram = TfidfVectorizer(analyzer='word', token_pattern=r'\w{1,}', ngram_range=(2,3), max_features=5000)
-    #    tfidf_vect_ngram.fit(abstracts)
-    #    xtrain_tfidf_ngram =  tfidf_vect_ngram.transform(abstracts)
-    #    xvalid_tfidf_ngram =  tfidf_vect_ngram.transform(abstracts_all)
-    #    
-    #    # characters level tf-idf
-    #    tfidf_vect_ngram_chars = TfidfVectorizer(analyzer='char', token_pattern=r'\w{1,}', ngram_range=(2,3), max_features=5000)
-    #    tfidf_vect_ngram_chars.fit(abstracts)
-    #    xtrain_tfidf_ngram_chars =  tfidf_vect_ngram_chars.transform(abstracts) 
-    #    xvalid_tfidf_ngram_chars =  tfidf_vect_ngram_chars.transform(abstracts_all) 
-    #    
+#    idf = tfidf_vect.idf_
+#    feature_dict = dict(zip(tfidf_vect.get_feature_names(), idf))
+#    sorted_feature_dict = sorted(feature_dict.items(), key=operator.itemgetter(1))
+#    top10_features = ""
+#    count = 0
+#    for item in sorted_feature_dict: 
+#        if count == 10:
+#            break
+#        top10_features += item[0]
+#        top10_features += " "
+#        count += 1
+
     # Naive Bayes on Word Level TF IDF Vectors
     probs, predictions = train_model(naive_bayes.MultinomialNB(), xtrain_tfidf, train_y, xvalid_tfidf)   
     
     # get top20 using sklearn feature selection
-#    k_best_features = get_best_features(tfidf_vect, xvalid_tfidf, predictions)
-#    return_str = ""
-#    for afeature in k_best_features:
-#        return_str += afeature
-#        return_str += " "
-#    print(return_str)
+    k_best_features = get_best_features(tfidf_vect, xvalid_tfidf, predictions)
+    return_str = filter_best_features(k_best_features, abstracts_all, predictions)
+    print(return_str)
  
     pred_label = ["Related", "Non-related"]
 
