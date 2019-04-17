@@ -237,8 +237,10 @@ $(document).ready(function(){
               }
           );
 
+
+
           // insert data into article table
-          for (var i = 0; i <= Math.ceil(count/200); i++) {
+          for (var i = 0; i <= Math.ceil(count/200)+1; i++) {
               (function (i) {
                   setTimeout(function () {
                         // insert articles info into article table
@@ -251,11 +253,11 @@ $(document).ready(function(){
                         var titles = [];
                         var newurl = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id="
 
-                        if(i == Math.ceil(count/200)){
+                        if(i == Math.ceil(count/200)+1){
                             $.unblockUI();
                             alert("Insert data finished!");
                             getUpdate("show_after_insert.php");
-                        }else {
+                        }else if(i < Math.ceil(count/200)) {
                             console.log("now inserting the " + i + "th 200 results");
                             // Get article ids -- ajax 0
                             $.ajax({
@@ -344,6 +346,8 @@ $(document).ready(function(){
             getUpdate("show_after_insert.php");
           });
 
+
+
       }); // end getstarted click
 
       // update user labels
@@ -364,6 +368,13 @@ $(document).ready(function(){
           console.log(labeled_ids);
           console.log(labels);
 
+          $('body').block( {
+              message : 'Updating Labels, Please Wait...',
+              css : {
+                  border : '3px solid khaki'
+              }
+          });
+
           $.post("update_labels.php",
               {
                 taskid: task_id,
@@ -371,6 +382,7 @@ $(document).ready(function(){
                 labels: labels
               },
               function (data) {
+                $.unblockUI();
                 alert(data);
               }
           );

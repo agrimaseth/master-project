@@ -65,6 +65,10 @@ def filter_best_features(k_best_features, abstracts_all, predictions):
                 nrel_total +=1
                 if afeature in abstract:
                     nrel_count += 1 
+        if rel_total == 0:
+            rel_total += 1
+        if nrel_total == 0:
+            nrel_total += 1
         if (rel_count/rel_total) > (nrel_count/nrel_total):
             return_str += afeature + " "
 
@@ -76,7 +80,7 @@ def train_main(task_id):
     
     cursor = db.cursor()
     
-    sql = "SELECT abstract, label FROM articles where taskid=" + str(task_id) + " and label = 1 or label = 3"
+    sql = "SELECT abstract, label FROM articles where taskid=" + str(task_id) + " and (label=1 or label=3)"
     abstracts = []
     labels = []
     try:
@@ -87,8 +91,39 @@ def train_main(task_id):
          labels.append(row[1])
     except:
        print ("Error: unable to fecth data")
-    
-
+       
+    # generate pseudo-labels when the user labeled very few articles
+    if len(labels) < 20:
+        sql_topK = "SELECT abstract, label FROM articles where taskid=" + str(task_id) + " order by artid DESC"
+        try:
+           cursor.execute(sql_topK)
+           results_top = cursor.fetchall()
+           count = 0
+           for row in results_top:
+               if count == 10:
+                   break
+               if row[0] not in abstracts:
+                   abstracts.append(row[0])
+                   labels.append(1)
+                   count += 1
+        except:
+           print ("Error: unable to fecth data")
+        
+        sql_bottomK = "SELECT abstract, label FROM articles where taskid=" + str(task_id) + " order by artid ASC"
+        try:
+           cursor.execute(sql_bottomK)
+           results_bottom = cursor.fetchall()
+           count = 0
+           for row in results_bottom:
+               if count == 10:
+                   break
+               if row[0] not in abstracts:
+                   abstracts.append(row[0])
+                   labels.append(3)
+                   count += 1
+        except:
+           print ("Error: unable to fecth data")
+        
     sql2 = "SELECT abstract, artid FROM articles where taskid=" + str(task_id) 
     abstracts_all = []
     ids = []
@@ -101,7 +136,6 @@ def train_main(task_id):
     except:
        print ("Error: unable to fecth data")
     
-    
     # label encode the target variable
     encoder = preprocessing.LabelEncoder()
     train_y = encoder.fit_transform(labels)
@@ -112,6 +146,7 @@ def train_main(task_id):
     tfidf_vect.fit(abstracts)
     xtrain_tfidf =  tfidf_vect.transform(abstracts)
     xvalid_tfidf =  tfidf_vect.transform(abstracts_all)
+
 
     # get features idf score and print top10
 #    idf = tfidf_vect.idf_
@@ -135,7 +170,6 @@ def train_main(task_id):
     print(return_str)
  
     pred_label = ["Related", "Non-related"]
-
 
     for i in range(0, len(ids)):        
         sql_insert = "insert into articles (taskid, artid) value (" + str(task_id) + "," + str(ids[i]) + ")  on duplicate key update score = " + str(probs[i][0]) + ", pred_label = '" + pred_label[predictions[i]] + "', uncert_score = " + str(1-max(probs[i][0],probs[i][1]))
