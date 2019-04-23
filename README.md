@@ -52,8 +52,7 @@ After deployment you can use "localhost:(your port)/HRSearch" to access the home
 4. Start Apache and MySQL service in xampp    
 5. Create tables using phpadmin:  
   Click "admin" button in xampp under MySQL service which will redirect you to phpMyAdmin
-  ![xampp mysql](https://github.com/yiwen9586/master-project/blob/master/screen%20shots/xampp1.png)
-  
+  ![xampp mysql](https://github.com/yiwen9586/master-project/blob/master/screen%20shots/xampp1.png)  
   Under "test" database which was already given, create table "articles" and "queries" using below scripts:  
   ![phpmyadmin](https://github.com/yiwen9586/master-project/blob/master/screen%20shots/phpmyadmin.png)
   ```sql  
